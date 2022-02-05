@@ -1,0 +1,966 @@
+---
+title: "PROJECT"
+author: "K.Lokesh Babu"
+date: "20/10/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+#install.packages("corrplot")
+#install.packages("ggplot2")
+#install.packages("class")
+# install.packages("coorplot")
+# install.packages("ggplot2")
+
+```
+
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(corrplot)
+library(caTools)
+library(kableExtra)
+library(rsample)
+library(recipes)
+library(parsnip)
+library(yardstick)
+library(viridisLite)
+library(GGally)
+library(Hmisc)
+library(corrplot)
+library(ggplot2)
+library(dplyr)
+library(gtools)
+library(gmodels) 
+library(tidyr)
+library(lattice)
+library(caret)
+#library(rmdformats)
+library(cowplot)
+library(class)
+```
+# Reading the dataset
+```{r}
+data <-read.csv("C:\\Users\\HP\\Downloads\\heart1.csv")
+data
+```
+
+
+```{r}
+tail(data)
+```
+
+# Glimpse of dataste
+```{r}
+glimpse(data)
+```
+# Number of Rows & columns in the dataset
+```{r}
+ncol(data)
+nrow(data)
+```
+# column names
+```{r}
+colnames(data)
+```
+# summary of dataset
+```{r}
+summary(data)
+```
+
+
+# Checking if 'NA' values present in dataset
+```{r}
+sum(is.na(data))
+```
+
+# Identifying the number of values in each level of dependent variable - "target"
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(target) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+
+# Identifying the different Sex and their frequency
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(sex) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(fbs) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(cp) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(restecg) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(exang) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+```{r}
+data %>% 
+  drop_na() %>%
+  group_by(thal) %>%
+  count() %>% 
+  ungroup() %>%
+  kable(align = rep("c", 2)) %>% kable_styling("full_width" = F)
+```
+
+# DATA TRANSFORMATION
+
+
+
+```{r}
+# Labling
+
+data2 <- data %>%
+  mutate(sex = if_else(sex == 1, "MALE","FEMALE"),
+         fbs = if_else(fbs == 1, ">120", "<=120"),
+         exang = if_else(exang == 1, "YES", "NO"),
+         cp = if_else(cp == 1, "ATYPICAL ANGINA",
+                      if_else(cp == 2, "NON-ANGINAL PAIN", "ASYMPTOMATIC")),
+         restecg = if_else(restecg == 0, "NORMAL",
+                           if_else(restecg == 1, "ABNORMALITY", "PROBABLE OR DEFINITE")),
+         slope = as.factor(slope),
+         ca = as.factor(ca),
+         thal = as.factor(thal),
+         target = if_else(target == 1, "YES", "NO")
+         ) %>%
+  mutate_if(is.character,as.factor) %>%
+  dplyr::select(target, sex, fbs, exang, cp, restecg, slope, ca, thal, everything())
+```
+
+
+```{r}
+glimpse(data2)
+```
+
+
+
+
+# EXPLORING DATA DISTRIBUTION & DATA VISUALIZATION
+
+```{r}
+# count(data2,restecg)
+```
+
+# Distribution of whether person is having heart disease(YES) or heart disease not present(NO)
+```{r}
+# prop.table(table(data2$target))
+```
+
+# Count of whether person is having heart disease(YES) or heart disease not present(NO)
+```{r}
+# table(data2$target)
+```
+
+```{r}
+# BAR PLOT FOR TARGET(HEART DISEASE)
+
+ggplot(data2, aes(x=data2$target, fill=data2$target))+
+  geom_bar()+
+  xlab("Heart Disease")+
+  ylab("Count")+
+  ggtitle("Presence and Absence of Heart Disease")+
+  scale_fill_discrete(name= "Heart Disease", labels = c("Absence", "Presence "))
+```
+
+
+
+```{r}
+#prop.table(table(data2$target))
+```
+
+
+```{r}
+# Frequency of the of heart disease by age
+
+data2 %>%
+  group_by(age) %>%
+  count() %>%
+  filter(n>10) %>%
+  ggplot()+
+  geom_col(aes(age, n), fill = 'green')+
+  ggtitle("Age Analysis")+
+  xlab("Age")+
+  ylab("Agecount")
+```
+
+```{r}
+# Frequency  of heart disease by sex
+
+ggplot(data2, aes(x=data2$sex, fill=data2$sex))+
+  geom_bar()+
+  xlab("sex")+
+  ylab("Count")+
+  ggtitle("Distribution of heart disease by sex")+
+  scale_fill_discrete(name= "Sex", labels = c("FEMALE", "MALE "))
+```
+
+
+```{r}
+tabyl(data2, sex)
+```
+
+
+```{r}
+# Frequency  of heart disease w.r.t different type of chest pain
+
+ggplot(data2, aes(x=data2$cp, fill=data2$cp))+
+  geom_bar()+
+  xlab("Types of chest pain")+
+  ylab("Heart disease Count")+
+  ggtitle("Distribution of heart disease with diff type of chest pain")+
+  scale_fill_discrete(name= "Chest Pain type", labels = c("ASYMPTOMATIC", "ATYPICAL ANGINA ","NON-ATYPICAL ANGINA"))
+```
+```{r}
+tabyl(data2, cp)
+```
+
+
+```{r}
+# Frequency  of heart disease w.r.t different level of blood sugar
+
+ggplot(data2, aes(x=data2$fbs, fill=data2$fbs))+
+  geom_bar()+
+  xlab("Level of Fasting Blood Sugar")+
+  ylab("Count")+
+  ggtitle("Distribution of heart disease w.r.t diff levels of dasting blood sugara")+
+  scale_fill_discrete(name= "Level of fbs", labels = c("<=120", ">120 "))
+```
+
+```{r}
+tabyl(data2, fbs)
+```
+
+
+```{r}
+# Compare Blood Pressure across type of chest pain using box plot
+
+data2 %>%
+  ggplot(aes(x=sex, y=trestbps))+
+  geom_boxplot(fill = 'purple')+
+  xlab('Sex')+
+  ylab('BP')+
+  facet_grid(~cp)
+```
+
+```{r}
+data3  = subset(data2, cp == "ASYMPTOMATIC" & sex == "FEMALE")
+summary(data3)
+```
+
+```{r}
+  #data %>%
+  #ggplot(aes(x=sex, y=trestbps))+
+  #geom_boxplot(fill = 'purple')+
+  #xlab('Sex')+
+  #ylab('BP')+
+  #facet_grid(~cp)
+```
+
+```{r}
+data2 %>%
+  ggplot(aes(x=sex, y=chol))+
+  geom_boxplot(fill = 'orange')+
+  xlab('Sex')+
+  ylab('Chol')+
+  facet_grid(~cp)
+```
+
+
+# CORRELATION
+
+
+
+```{r}
+cor_heart <- cor(data2[, 10:14])
+cor_heart
+
+corrplot(cor_heart, method = "square")
+#corrplot(cor_heart, method = "square", type = 'upper')
+#corrplot(cor_heart, method = 'circle', type = 'lower')
+corrplot(cor_heart, method = 'number')
+corrplot(cor_heart, method = 'shade')
+
+```
+
+
+
+# #######################################    LOGISTIC REGRESSION    ###############################################
+
+
+# LOGISTIC REGRESSION - a linear model for binary classification predictive modeling
+
+# Now,Verifying that the data is not imbalanced
+### Some quality control is done by making sure all of the factor levels are represented by people with and without heart disease(target)
+
+# Now we need to make sure that healthy and diseased(unhealthy) samples come from each gender(male and female).If only male/female samples have heart disease, the other samples must be removed.
+# (i.e; If only male samples have disease, we should probably remove all females from the model.)
+
+# We do this with the 'xtabs()' function.
+# This is applied to all the boolean and categorical variables that are being used to predict heart disease.
+
+```{r}
+xtabs(~ target + sex, data = data2)
+xtabs(~ target + cp,data = data2)
+xtabs(~ target + fbs,data = data2)
+xtabs(~ target + restecg,data = data2)
+xtabs(~ target + exang,data = data2)
+xtabs(~ target + slope,data = data2)
+xtabs(~ target + ca,data = data2)
+
+```
+
+
+# A simple model is built using Sex as the only parameter, before the actual implementation of Logistic Regression Using all the parameters, to see if sex (female/male) is a good predictor.
+
+```{r}
+xtabs(~ target + sex, data=data2)
+```
+# From the above table...
+# Most of the males are unhealthy compared to females. 
+# Being female is likely to decrease the odds in being unhealthy. In other words, if a sample is female, the odds are against it that it will be unhealthy
+# Being male is likely to increase the odds in being unhealthy. In other words, if a sample is male, the odds are for it being unhealthy.
+
+
+
+# The Logistic Regression model using Sex as the only parameter.
+
+# Here is our call to 'glm()', the function that performs 'Generalized Linear Models'
+# Here, we specify the binomial family of Generalized Linear Models, which makes glm() do Logistic Regression.
+
+```{r}
+logistic <- glm(target ~ sex,data = data2, family="binomial")
+summary(logistic)
+```
+# From the above summary, it is evident that the Deviance Residuals return good results.
+
+# The coefficients correspond to the following model:
+#                   target = 0.3795 + 0.6371 * the patient is male (0 if female, otherwise 1)
+# Therefore, if we are predicting heart disease for a female patient using the above formula, the log(odds), which is the measure of the likeliness of a female having a heart disease, is 0.3795. 
+# Similarly, prediction of heart disease for a male patient using the above formula, gives the answer as 0.3795 + 0.6371.
+
+# In the column "Estimate" of the Coefficient output...
+# Since, the first term, i.e. "Intercept" (0.3795) is the log(odds) of a female having heart disease, the second term, i.e. "SexMALE" (0.6371) indicates the increase in the log(odds) that a male has of having a heart disease.
+
+ 
+
+
+# log(odds)
+# "Intercept" is the log(odds) that a female will be unhealthy (having a heart disease). This is because female is the first factor in "Sex" (the factors are ordered, alphabetically by default,"female", "male")
+```{r}
+female.log.odds <- log(57 / 39)
+female.log.odds
+```
+
+
+# log(odds ratio)
+# "SexMALE" is the log(odds ratio) that tells us that if a sample has Sex=MALE, what the odds of being unhealthy are, on a log scale 1.27 times greater than if a sample has Sex=FEMALE.
+```{r}
+male.log.odds.ratio <- log((152 / 55) / (57/39))
+male.log.odds.ratio
+```
+
+
+# Now, we calculate the overall "Pseudo R-squared" and its p-value
+
+# Since we are doing logistic regression...
+#             Null devaince = 2*(0 - LogLikelihood(null model))
+#                           = -2*LogLikihood(null model)
+#             Residual deviacne = 2*(0 - LogLikelihood(proposed model))
+#                               = -2*LogLikelihood(proposed model)
+
+# For McFadden's Pseudo R^2
+#       First, we calculate the log-likelihood of the null model using the logistic variable by getting the value of the null deviance and dividing it by -2.
+#       Then, we calculate the log-likelihood of the proposed model (The model we are building) using the logistic variable by getting the value of the residual deviance and dividing it by -2.
+
+```{r}
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+```
+
+# McFadden's Pseudo R^2 = [ LL(Null) - LL(Proposed) ] / LL(Null)
+# This Pseudo R^2 value can be interpreted as the overall effect size.
+```{r}
+(ll.null - ll.proposed) / ll.null
+```
+
+# The same log-likelihoods can be used to calculate a p-value for the R^2 value computed above, using a Chi-square distribution.
+# chi-square value = 2*(LL(Proposed) - LL(Null))
+# p-value = 1 - pchisq(chi-square value, df = 2-1)
+```{r}
+1 - pchisq(2*(ll.proposed - ll.null), df=1)
+1 - pchisq((logistic$null.deviance - logistic$deviance), df=1)
+```
+
+# Now, the logistic regression predicts whether a patient is having a heart disease or not, given that a patient is either female or male (and no other data about them).
+# Here, we create a new data-frame that contains the probabilities of having a heart disease along with the actual heart disease status (the value of the "target" attribute in the given dataset).
+```{r}
+predicted_data <- data.frame(
+  probability.of.target=logistic$fitted.values,
+  sex=data2$sex)
+```
+
+```{r}
+# predicted_data
+```
+
+# Plotting the graph for the probability of a person having a heart disease or not, with “Sex” as the only parameter.
+```{r}
+ggplot(data=predicted_data, aes(x=sex, y=probability.of.target)) +
+  geom_point(aes(color=sex), size=5) +
+  xlab("Sex") +
+  ylab("Predicted probability of getting heart disease")
+```
+# As is evident from the above graph, females have a much lower probability of getting a heart disease as compared to males.
+# i.e; probability of female getting heart disease is less than the probability og male gettion hear disease
+
+#Since there are only two probabilities (one for females and one for males), a table can be used to summarize the predicted probabilities.
+```{r}
+xtabs(~ probability.of.target + sex, data=predicted_data)
+```
+
+
+
+
+
+
+
+
+# The Logistic Regression model using all attributes as parameter
+
+# Now, we will be splitting our data into train and test data. We will use our train data to train our model and use our test data to validate our model when overcoming the unseen data. 70% is train data, and 30% is test data.
+
+```{r}
+#set.seed(100)
+#index <- sample(nrow(data2), nrow(data2)*0.7)
+
+# Data train
+#train_data <- data2[index,]
+
+# Data test
+#test_data <- data2[-index,]
+
+split <- sample.split(data2, SplitRatio = 0.7)
+split
+train_data <- subset(data2, split == "TRUE")
+test_data <- subset(data2, split == "FALSE")
+```
+
+# Next, we will check our train data proportion whether the proportion is balance enough to train our model, this need to be done so we can minimize the risk that our models are overfit.
+```{r}
+prop.table(table(train_data$target))
+```
+
+
+# Now, a model is built with all of the data available to predict heart disease.
+
+```{r}
+logistic1 <- glm(target ~ . ,data = train_data, family="binomial")
+summary(logistic1)
+```
+# Here, we can see that age is not a good predictor as it has a large p-value.
+
+# However,Sex is still a very good predictor, with a small p-value, as already evident from the previous model.
+
+# The Residual Deviance and the AIC values are both much smaller for this model, than  they were for the simple model, which was built using Sex as the only parameter to predict heart disease.
+
+
+
+# Calculation of the overall "Pseudo R-squared" and its p-value
+# McFadden's Pseudo R^2 = [ LL(Null) - LL(Proposed) ] / LL(Null)
+```{r}
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed)/ll.null
+```
+
+
+# The p-value for the R^2
+# Here, the p-value is very small (~0) as the R^2 value is large.
+```{r}
+1-pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))  
+```
+
+# We can draw a graph taht shows the predicted probabilities that each patient has heart disease along with their actual heart disease status.
+ 
+# 1. To draw the graph, we start by creating a new data.frame that contains the probabilities of having heart disease along with the actual hear disease status.
+ 
+# 2. Then we sort the data.frame from low probabilities to high probabilities.
+
+# 3. Then we add a new column to the data.frame that has the rank of each sample, from low probability to high probability.
+
+```{r}
+# Creating data-frame
+
+predicted_data <- data.frame(probability.of.target=logistic1$fitted.values, target=train_data$target)
+```
+ 
+```{r}
+# Sorting
+
+predicted_data <- predicted_data[order(predicted_data$probability.of.target, decreasing = FALSE),]
+```
+
+```{r}
+predicted_data$rank <- 1:nrow(predicted_data)
+```
+
+```{r}
+# predicted_data
+```
+
+
+```{r}
+ggplot(data=predicted_data, aes(x=rank, y=probability.of.target)) +
+  geom_point(aes(color=target), alpha=1, shape=4, stroke=2) +
+  xlab("Index by rank") +
+  ylab("Predicted probability of getting heart disease")
+```
+# The above graph shows the predicted probabilities of whether a patient has heart disease or not, along with their actual heart disease status.
+
+# The 'Index by rank' label on the x-axix gives the position/rank of the given data point in the sorted data-frame, which is being plotted here along with tha probabilities.
+
+# Most of the people with heart disease (ones in blue), are predicted to have a high probability of having a heart disease.
+
+# Most of the people without heart disease (ones in red), are predicted to have low probability of having a heart disease.
+
+
+# Thus, it can be said that our Logistic Regression Model has worked successfully well. 
+
+
+```{r}
+#nrow(train_data)
+```
+
+
+```{r}
+res <- predict(logistic1,test_data,type="response")
+res
+
+res1 <- predict(logistic1,train_data,type="response")
+res1
+```
+
+```{r}
+confmatrix1 <- table(Actual_value=train_data$target, predicted_value = res1 >0.5 )
+confmatrix1
+```
+
+```{r}
+confmatrix <- table(Actual_value=test_data$target, predicted_value = res >0.5 )
+confmatrix
+```
+
+```{r}
+#ACCURACY
+(confmatrix[[1,1]] + confmatrix[[2,2]]) / sum(confmatrix)*100
+```
+# The accuracy thate we got is "79.38%"
+
+
+
+
+
+
+
+
+
+
+# #######################################    KNN Classification Algorithm   ###############################################
+
+
+# Converting all variables to integers, as KNN works only with numerical values.
+```{r}
+heart_knn <- data %>%
+  mutate(#ST_Depression_Exercise = as.integer(ST_Depression_Exercise),
+         ca = as.integer(ca),
+         thal = as.integer(thal),
+         target = if_else(target == 0, 0, 1)
+         ) %>%
+  mutate_if(is.character, as.factor) %>%
+  mutate_if(is.double, as.integer) %>%
+  dplyr::select(age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal, everything())
+
+glimpse(heart_knn)
+```
+
+# Structure of the modified dataset
+```{r}
+str(heart_knn)
+```
+
+
+
+
+
+# Data Cleaning
+
+
+
+# Checking for NA values
+```{r}
+colSums(is.na(heart_knn))
+```
+
+
+# Initial number of rows
+```{r}
+nrow(heart_knn)
+```
+
+
+
+# Data Normalization
+
+# The dataset should be normalized so that the output remains unbiased.
+```{r}
+normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x))) }
+```
+
+
+# In the below code snippet, we’re storing the normalized data set in the ‘heart_knn_n’ variable and removing the ‘Diagnosis_Heart_Disease’ variable since it’s the response variable that needs to be predicted.
+```{r}
+heart_knn_n <- as.data.frame(lapply(heart_knn[,1:13], normalize))
+```
+
+# The normalized data set:
+```{r}
+head(heart_knn_n)
+```
+
+# Structure of the normalized dataset
+```{r}
+str(heart_knn_n)
+```
+
+
+
+
+
+# Data Spliting
+
+# After cleaning the data set and formatting it, the next step is data splicing. Data splicing basically involves splitting the data set into training and testing data set. This is done in the following code snippet:
+```{r}
+set.seed(123)
+
+# Random selection of 80% data.
+data_spliced <- sample(1:nrow(heart_knn_n),size=nrow(heart_knn_n)*0.8,replace = FALSE) 
+
+# 80% training data
+train.heart <- heart_knn[data_spliced,]
+
+# remaining 20% test data
+test.heart <- heart_knn[-data_spliced,] 
+```
+
+
+# After deriving the training and testing data set, the below code snippet is going to create a separate data frame for the ‘target’ variable so that our final outcome can be compared with the actual value.
+```{r}
+# Creating seperate dataframe for 'target' feature which is our target variable.
+train.heart_labels <- heart_knn[data_spliced,14]
+test.heart_labels <-heart_knn[-data_spliced,14]
+```
+
+
+
+
+
+# Building a Machine Learning model using KNN
+
+# At this stage, we build a model by using the training dataset. Since we’re using the KNN algorithm to build the model, use the ‘class’ package provided by R. This package has the KNN function in it:
+
+# Next, we’re going to calculate the number of observations in the training data set. This is required for initializing the value of 'K' in the model, as one of the ways to find the optimal 'K' value is to calculate the square root of the total number of observations in the dataset. This square root will give the ‘K’ value.
+```{r}
+# The number of observation
+NROW(train.heart_labels)
+```
+
+# We have 242 observations in our training dataset. The square root of 237 is around 15.55, therefore we’ll create two models. One with ‘K’ value as 15 and the other model with a ‘K’ value as 16.
+```{r}
+knn_15 <- knn(train=train.heart, test=test.heart, cl=train.heart_labels, k=15)
+knn_16 <- knn(train=train.heart, test=test.heart, cl=train.heart_labels, k=16)
+
+```
+
+
+
+
+
+# Model Evaluation
+
+# After building the model, we calculate the accuracy of the created models:
+```{r}
+# Calculate the proportion of correct classification for k = 15
+ACC_15 <- 100 * sum(test.heart_labels == knn_15)/NROW(test.heart_labels)
+ACC_15
+
+# Calculate the proportion of correct classification for k = 16
+ACC_16 <- 100 * sum(test.heart_labels == knn_16)/NROW(test.heart_labels)
+ACC_16 
+```
+
+# As shown above, the accuracy for K = 15 is 68.85246 and for K = 16 it is 65.57377. We can also check the predicted outcome against the actual value in tabular form:
+```{r}
+# Checking prediction against actual value in tabular form for k = 15
+table(knn_15 ,test.heart_labels)
+knn_15
+```
+
+
+```{r}
+# Checking prediction against actual value in tabular form for k = 16
+table(knn_16 ,test.heart_labels)
+knn_16
+```
+
+# We can also use the confusion matrix to calculate the accuracy, with the help of the Caret package.
+# The caret package, also known as classification and regression training, has tons of functions that help build predictive models. It contains tools for data splitting, pre-processing, feature selection, tuning, unsupervised learning algorithms, etc. It provides us direct access to various functions for training our model with various machine learning algorithms like KNN, SVM, decision tree, linear regression, etc.
+```{r}
+# Using the confusion matrix to calculate the accuracy of the KNN model with K value set to 15:
+confusionMatrix(table(knn_15 ,test.heart_labels))
+```
+# So, from the output, we can see that our model predicts the outcome with an accuracy of 68.85% which is fairly good since we worked with a small data set. The more data (optimal data) we feed the machine, the more efficient the model will be.
+
+
+
+```{r}
+# Using the confusion matrix to calculate the accuracy of the KNN model with K value set to 16:
+confusionMatrix(table(knn_16 ,test.heart_labels))
+```
+# So, from the output, we can see that our model predicts the outcome with an accuracy of 65.57% which is fairly good since we worked with a small data set.
+
+
+# Optimization
+
+# In order to improve the accuracy of the model, at first we create a loop that calculates the accuracy of the KNN model for ‘K’ values ranging from 1 to 50, and then plot the maximum percentage accuracy graph.
+# This way we can check which ‘K’ value will result in the most accurate model:
+```{r}
+i=1
+k_optimized = 1
+for (i in 1:50){
+  knn.mod <- knn(train=train.heart, test=test.heart, cl=train.heart_labels, k=i)
+  k_optimized[i] <- 100 * sum(test.heart_labels == knn.mod)/NROW(test.heart_labels)
+  k = i
+  cat(k,'=',k_optimized[i],'\n')
+}
+```
+# We can thus see, that the accuracy value is the highest (70.4918) for k = 13, 17 and 20, which is a  good accuracy score, as the given dataset is very small.
+
+
+
+# Representing the above data graphically
+```{r}
+# Accuracy plot
+plot(k_optimized, type="b", xlab="K-Value",ylab="Accuracy level")
+```
+
+
+# We thus create a model with k = 13
+```{r}
+knn_13 <- knn(train=train.heart, test=test.heart, cl=train.heart_labels, k=13)
+```
+
+# Checking the prediction against the actual values in tabular form for k = 13
+```{r}
+table(knn_13 ,test.heart_labels)
+knn_13
+```
+
+# The confusion matrix to calculate the accuracy of the KNN model with K value set to 13:
+```{r}
+confusionMatrix(table(knn_13 ,test.heart_labels))
+```
+# So, from the output, we can see that our model predicts the outcome with an accuracy of 70.49% which is  good since we worked with a small dataset.
+
+
+
+
+
+
+
+
+
+
+
+
+# #######################################       SVM    ###############################################
+
+
+
+# SVM (Support Vector Machine) is a supervised machine learning algorithm which is mainly used to classify data into different classes. Unlike most algorithms, SVM makes use of a hyperplane which acts like a decision boundary between the various classes.
+# SVM can be used to generate multiple separating hyperplanes such that the data is divided into segments and each segment contains only one kind of data.
+
+# Here, we store the heart_knn (derived from data2) dataset variable into a new variable, heart_svm. This way, we don't have to clean the data another time, and we get a pre-processed data.
+```{r}
+heart_svm <- heart_knn
+heart_svm
+```
+
+# Structure of this dataset
+```{r}
+str(heart_svm)
+```
+
+# Summary of this dataset
+```{r}
+summary(heart_svm)
+```
+
+
+
+
+
+# Data Spliting
+
+# Now, we split the data into a training set and a testing set.
+```{r}
+svm_spliced <- createDataPartition(y = heart_svm$target, p = 0.8, list = FALSE)
+train_heart_svm <- heart_svm[svm_spliced,]
+test_heart_svm <- heart_svm[-svm_spliced,] 
+```
+# The caret package provides a method createDataPartition(), which is basically used for partitioning the data into the training and testing set.
+
+# 3 parameters are passed to the createdatapartition() function:
+# The “y” parameter takes the value of the variable (target variable, i.e. Diagnosis_Heart_Disease) according to which data needs to be partitioned.
+# The “p” parameter holds a decimal value in the range of 0-1, which represents the percentage of the split. Here, p=0.8, meaning that data split is done in 80:20 ratio. So, 80% of the data is used for training and the remaining 20% is for testing the model.
+# The “list” parameter is for whether to return a list or matrix - set to FALSE for not returning a list.
+
+# The createDataPartition() method returns a matrix “svm_spliced”, which contains the training dataset, which in turn is stored in the ‘train_heart_svm’, and the remaining 20% of the data is stored in the 'test_heart_svm' variable.
+
+
+
+
+
+# Dimensions of train_heart_svm data-frame and test_heart_svm data-frame
+```{r}
+dim(train_heart_svm)
+dim(test_heart_svm)
+```
+
+# From the output of the summary() command, we find that the value of the 'target' variable is not standardized,and holds only '0' or '1'.
+# Instead, 'target' should be a categorical variable.
+```{r}
+train_heart_svm[["target"]] = factor(train_heart_svm[["target"]])
+train_heart_svm[["target"]]
+```
+
+
+
+
+# Training of the model
+
+# Before actual training, the trainControl() method is implemented, which controls all the computational overheads so that the train() function provided by the caret package can bge uesd. The training method trains the data on different algorithms.
+
+# The traincontrol() method:
+```{r}
+train_control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+```
+# The trainControl() method takes 3 parameters:
+# The “method” parameter (set to repeatedcv, i.e. repeated cross-validation method) defines the resampling method.
+# The “number” parameter (set to 10), which holds the number of resampling iterations.
+# The “repeats ” parameter (set to 3) contains the sets to compute for the repeated cross-validation.
+
+
+
+# This trainControl() method returns a list, which is passed on to the train() method.
+```{r}
+svm_Linear <- train(target ~., data = train_heart_svm, method = "svmLinear",
+trControl = train_control,
+preProcess = c("center", "scale"),
+tuneLength = 10)
+
+```
+# The train() method should be passed with “method” parameter as “svmLinear”. Here, all attributes are used as parameters in the classifier, and "target" is the dependent variable. 
+# The “trControl” parameter should be passed with results from the trianControl() method. 
+# The “preProcess” parameter is for preprocessing the training data, which is passed with 2 values,i.e. “center,” and “scale” parameters. These two help for centering and scaling the data. After pre-processing, the train_heart_svm data is converted with mean value as approximately “0” and standard deviation as “1”. 
+# The “tuneLength” parameter holds an integer value, used for tuning the algorithm.
+
+
+
+# The result of the train() method is saved in the svm_Linear variable.
+```{r}
+ svm_Linear
+```
+# Since, it is a linear model, it was just tested at value “C” = 1.
+
+
+
+# Now, the model is ready to predict the classes for the test set, for which the predict() method is used.
+# The caret package provides the predict() method for predicting results, which is passed with two parameters - the first parameter being the trained model (the svm_Linear variable), and second parameter, “newdata”, which holds the test_heart_svm data-frame. 
+# The predict() method returns a list, whcich is saved in the test_pred variable.
+```{r}
+test_pred <- predict(svm_Linear, newdata = test_heart_svm)
+test_pred
+```
+
+# Accuracy of our model using the confusion matrix
+```{r}
+confusionMatrix(table(test_pred, test_heart_svm$target))
+```
+# The output shows that our model accuracy for test set is 68.33%.
+# The svmLinear classifier can be build using the above procedure.
+
+
+
+# Some customization for selecting C (Cost) value in the Linear classifier is done by inputting values in grid search.
+# Now, we buil & tune the SVM classifier with different values of C.
+# A few values of C are put into the “grid” data-frame using expand.grid() function. 
+# Then, this data-frame is used for testing the classifier at specific C values (as opposed to the previous build, where the model was tested for only C = 1), by puting it in the train() method with the "tuneGrid" parameter.
+```{r}
+grid <- expand.grid(C = c(0.005, 0.1, 0.2, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
+svm_Linear_Grid <- train(target ~., data = train_heart_svm, method = "svmLinear",
+trControl=train_control,
+preProcess = c("center", "scale"),
+tuneGrid = grid,
+tuneLength = 10)
+svm_Linear_Grid
+plot(svm_Linear_Grid)
+```
+# The above plot is showing that our classifier is giving best accuracy on C = 0.1 . 
+
+
+
+# Now, we optimize our model by making predictions using the above model for the test set.
+```{r}
+test_pred_grid <- predict(svm_Linear_Grid, newdata = test_heart_svm)
+test_pred_grid
+```
+
+# Accuracy of this model using the confusion-matrix.
+```{r}
+confusionMatrix(table(test_pred_grid, test_heart_svm$target))
+```
+# The results of the confusion matrix show that this time the accuracy on the test set is 71.67%, which is way more accurate than our previous result.
